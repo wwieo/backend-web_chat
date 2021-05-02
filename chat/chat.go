@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"../utils"
+	"github.com/utils"
 
 	"github.com/gorilla/websocket"
 )
