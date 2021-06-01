@@ -39,11 +39,13 @@ func (c *Chat) Handler(w http.ResponseWriter, r *http.Request) {
 		username = fmt.Sprintf("anom-%d", utils.GetRandomI64())
 	}
 
-	c.join <- &User{
+	user := &User{
 		UserName: username,
 		Conn:     conn,
 		Global:   c,
 	}
+	c.join <- user
+	user.Read()
 }
 
 func (c *Chat) Run() {
@@ -51,6 +53,10 @@ func (c *Chat) Run() {
 		select {
 		case user := <-c.join:
 			c.add(user)
+		case message := <-c.messages:
+			c.broadcast(message)
+		case user := <-c.leave:
+			c.disconnect(user)
 		}
 	}
 }
@@ -59,6 +65,21 @@ func (c *Chat) add(user *User) {
 	if _, ok := c.users[user.UserName]; !ok {
 		c.users[user.UserName] = user
 		log.Printf("Added user: %s, Total: %d\n", user.UserName, len(c.users))
+	}
+}
+
+func (c *Chat) broadcast(message *Message) {
+	log.Printf("Broadcast message: %v\n", message)
+	for _, user := range c.users {
+		user.Write(message)
+	}
+}
+
+func (c *Chat) disconnect(user *User) {
+	if _, ok := c.users[user.UserName]; ok {
+		defer user.Conn.Close()
+		delete(c.users, user.UserName)
+		log.Printf("User left the chat: %s, Total: %d\n", user.UserName, len(c.users))
 	}
 }
 

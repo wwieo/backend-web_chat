@@ -1,8 +1,9 @@
 package main
 
 import (
-	"chat/chat"
 	"flag"
+
+	"github.com/chat"
 )
 
 var (
@@ -16,3 +17,5 @@ func init() {
 func main() {
 	chat.Start(*port)
 }
+
+//let ws = new WebSocket("ws://localhost:8080/chat")
