@@ -1,4 +1,4 @@
-package chat
+package random_match_chat
 
 import (
 	"fmt"
@@ -27,7 +27,7 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-func (c *Chat) Handler(w http.ResponseWriter, r *http.Request) {
+func (chat *Chat) Handler(w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Fatal("Error on websocket connection:", err.Error())
@@ -42,53 +42,15 @@ func (c *Chat) Handler(w http.ResponseWriter, r *http.Request) {
 	user := &User{
 		UserName: username,
 		Conn:     conn,
-		Global:   c,
+		Global:   chat,
 	}
-	c.join <- user
+	chat.join <- user
 	user.Read()
-}
-
-func (c *Chat) Run() {
-	for {
-		select {
-		case user := <-c.join:
-			c.add(user)
-		case message := <-c.messages:
-			c.broadcast(message)
-		case user := <-c.leave:
-			c.disconnect(user)
-		}
-	}
-}
-
-func (c *Chat) add(user *User) {
-	if _, ok := c.users[user.UserName]; !ok {
-		c.users[user.UserName] = user
-
-		body := fmt.Sprintf("%s join the chat", user.UserName)
-		c.broadcast(NewMessage(body, "Server"))
-	}
-}
-
-func (c *Chat) broadcast(message *Message) {
-	log.Printf("Broadcast message: %v\n", message)
-	for _, user := range c.users {
-		user.Write(message)
-	}
-}
-
-func (c *Chat) disconnect(user *User) {
-	if _, ok := c.users[user.UserName]; ok {
-		defer user.Conn.Close()
-		delete(c.users, user.UserName)
-		body := fmt.Sprintf("%s left the chat", user.UserName)
-		c.broadcast(NewMessage(body, "Server"))
-	}
 }
 
 func Start(port string) {
 	log.Printf("Chat listening on port: %s\n", port)
-	c := &Chat{
+	chat := &Chat{
 		users:    make(map[string]*User),
 		messages: make(chan *Message),
 		join:     make(chan *User),
@@ -98,9 +60,9 @@ func Start(port string) {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write(([]byte("Welcome to Go Webchat!")))
 	})
-	http.HandleFunc("/chat", c.Handler)
+	http.HandleFunc("/chat", chat.Handler)
 
-	go c.Run()
+	go chat.Run()
 
 	log.Fatal(http.ListenAndServe(port, nil))
 }

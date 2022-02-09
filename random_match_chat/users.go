@@ -1,4 +1,4 @@
-package chat
+package random_match_chat
 
 import (
 	"encoding/json"
@@ -8,6 +8,7 @@ import (
 )
 
 type User struct {
+	IP       string
 	UserName string
 	Conn     *websocket.Conn
 	Global   *Chat

@@ -1,8 +1,9 @@
-package chat
+package random_match_chat
 
 import "github.com/utils"
 
 type Message struct {
+	IP     string "json:'ip'"
 	ID     int64  "json:'id'"
 	Body   string "json:'body'"
 	Sender string "json:'sender'"
@@ -10,6 +11,7 @@ type Message struct {
 
 func NewMessage(body string, sender string) *Message {
 	return &Message{
+		IP:     utils.GetUserIP(),
 		ID:     utils.GetRandomI64(),
 		Body:   body,
 		Sender: sender,

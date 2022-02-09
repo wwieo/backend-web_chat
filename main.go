@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 
-	"github.com/chat"
+	"github.com/random_match_chat"
 )
 
 var (
@@ -15,7 +15,7 @@ func init() {
 }
 
 func main() {
-	chat.Start(*port)
+	random_match_chat.Start(*port)
 }
 
 //let ws = new WebSocket("ws://localhost:8080/chat")
