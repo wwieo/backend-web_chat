@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 
-	"github.com/random_match_chat"
+	random_match_chat "backend-web_chat/random_match_chat"
 )
 
 var (

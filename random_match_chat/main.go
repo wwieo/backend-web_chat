@@ -1,12 +1,11 @@
 package random_match_chat
 
 import (
+	utils "backend-web_chat/utils"
 	"fmt"
 	"log"
 	"net/http"
 	"strings"
-
-	"github.com/utils"
 
 	"github.com/gorilla/websocket"
 )

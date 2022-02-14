@@ -1,6 +1,6 @@
 package random_match_chat
 
-import "github.com/utils"
+import utils "backend-web_chat/utils"
 
 type Message struct {
 	IP     string "json:'ip'"
