@@ -4,6 +4,8 @@ import (
 	"math/rand"
 	"net"
 	"time"
+
+	"gopkg.in/olahol/melody.v1"
 )
 
 func GetRandom() *rand.Rand {
@@ -12,6 +14,10 @@ func GetRandom() *rand.Rand {
 
 func GetRandomI64() int64 {
 	return GetRandom().Int63()
+}
+
+func GetUsername(session *melody.Session) string {
+	return session.Request.URL.Query().Get("username")
 }
 
 func GetUserIP() string {
