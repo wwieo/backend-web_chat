@@ -1,19 +1,14 @@
 package utils
 
 import (
-	"math/rand"
 	"net"
-	"time"
 
+	"github.com/google/uuid"
 	"gopkg.in/olahol/melody.v1"
 )
 
-func GetRandom() *rand.Rand {
-	return rand.New(rand.NewSource(time.Now().UnixNano()))
-}
-
-func GetRandomI64() int64 {
-	return GetRandom().Int63()
+func GetMsgID() string {
+	return uuid.New().String()
 }
 
 func GetUsername(session *melody.Session) string {

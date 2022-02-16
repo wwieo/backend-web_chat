@@ -1,9 +1,8 @@
 package main
 
 import (
+	chat "backend-web_chat/chat"
 	"flag"
-
-	random_match_chat "backend-web_chat/random_match_chat"
 )
 
 var (
@@ -15,7 +14,7 @@ func init() {
 }
 
 func main() {
-	random_match_chat.Start(*port)
+	chat.Start(*port)
 }
 
 //let ws = new WebSocket("ws://localhost:8080/chat")

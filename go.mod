@@ -2,7 +2,10 @@ module backend-web_chat
 
 go 1.17
 
-require github.com/go-redis/redis/v8 v8.11.4
+require (
+	github.com/go-redis/redis/v8 v8.11.4
+	github.com/google/uuid v1.3.0
+)
 
 require (
 	github.com/gin-contrib/sse v0.1.0 // indirect
