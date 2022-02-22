@@ -19,18 +19,20 @@ func Start(port string) {
 		Melody:      melody.New(),
 		RedisClient: controllers.SetRedisClient(),
 	}
-	// mongoClient := controllers.SetMongoClient()
-	// mongoTool := mdDB.MongoTool{
-	// 	MongoClient: mongoClient,
-	// 	Database:    mongoClient.Database("ChatSystem"),
-	// 	CollName:    mongoClient.Database("ChatSystem").Collection("Messages"),
-	// }
+	chatController := controllers.NewChatContoller(&socketTool)
+
+	mongoClient := controllers.SetMongoClient()
+	mongoTool := mdDB.MongoTool{
+		MongoClient: mongoClient,
+		Database:    mongoClient.Database("ChatSystem"),
+		CollName:    mongoClient.Database("ChatSystem").Collection("Messages"),
+	}
 
 	ginDefault.GET("/chat", controllers.HandleRequest(&socketTool))
 
-	controllers.HandleMessage(&socketTool)
-	controllers.HandleConnect(&socketTool)
-	controllers.HandleClose(&socketTool)
+	chatController.HandleMessage(&socketTool, &mongoTool)
+	chatController.HandleConnect(&socketTool)
+	chatController.HandleClose(&socketTool)
 
 	ginDefault.Run(port)
 }

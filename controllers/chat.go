@@ -10,54 +10,61 @@ import (
 	"gopkg.in/olahol/melody.v1"
 
 	mdDB "backend-web_chat/model/database"
-	utils "backend-web_chat/utils"
 )
 
 const (
-	KEY  = "chat_id"
-	WAIT = "wait"
+	chatKey  = "chat_id"
+	chatWait = "wait"
 )
 
+type ChatController struct {
+	socketTool *mdDB.RedisTool
+}
+
+func NewChatContoller(socketTool *mdDB.RedisTool) *ChatController {
+	return &ChatController{socketTool}
+}
+
 func SetRedisClient() *redis.Client {
-	RedisClient := redis.NewClient(&redis.Options{
+	redisClient := redis.NewClient(&redis.Options{
 		Addr: "localhost:6379",
 		// Password: "", no password set
 		DB: 0, // use default DB
 	})
-	_, err := RedisClient.Ping(context.Background()).Result()
+	_, err := redisClient.Ping(context.Background()).Result()
 	if err != nil {
 		log.Fatal("Redis error:", err)
 	}
-	return RedisClient
+	return redisClient
 }
 
-func InitSession(session *melody.Session) string {
+func initSession(session *melody.Session) string {
 	id := uuid.New().String()
-	session.Set(KEY, id)
+	session.Set(chatKey, id)
 	return id
 }
 
-func GetSessionID(session *melody.Session) string {
-	if id, isExist := session.Get(KEY); isExist {
+func getSessionID(session *melody.Session) string {
+	if id, isExist := session.Get(chatKey); isExist {
 		return id.(string)
 	}
-	return InitSession(session)
+	return initSession(session)
 }
 
-func AddToWaitList(id string, redisClient *redis.Client) error {
-	return redisClient.LPush(context.Background(), WAIT, id).Err()
+func addToWaitList(id string, redisClient *redis.Client) error {
+	return redisClient.LPush(context.Background(), chatWait, id).Err()
 }
 
-func GetWaitFirstKey(redisClient *redis.Client) (string, error) {
-	return redisClient.LPop(context.Background(), WAIT).Result()
+func getWaitFirstKey(redisClient *redis.Client) (string, error) {
+	return redisClient.LPop(context.Background(), chatWait).Result()
 }
 
-func CreateChat(id1, id2 string, redisClient *redis.Client) {
+func createChat(id1, id2 string, redisClient *redis.Client) {
 	redisClient.Set(context.Background(), id1, id2, 0)
 	redisClient.Set(context.Background(), id2, id1, 0)
 }
 
-func RemoveChat(id1, id2 string, redisClient *redis.Client) {
+func removeChat(id1, id2 string, redisClient *redis.Client) {
 	redisClient.Del(context.Background(), id1, id2)
 }
 
@@ -69,49 +76,49 @@ func HandleRequest(socketTool *mdDB.RedisTool) func(c *gin.Context) {
 }
 
 //when user send the message
-func HandleMessage(socketTool *mdDB.RedisTool) {
+func (chatController ChatController) HandleMessage(socketTool *mdDB.RedisTool, mongoTool *mdDB.MongoTool) {
 	melodyNew := socketTool.Melody
 	redisClient := socketTool.RedisClient
+	msgController := NewMessageContoller(mongoTool)
 
 	melodyNew.HandleMessage(func(session *melody.Session, msg []byte) {
-		id := GetSessionID(session)
+		id := getSessionID(session)
 		chatTo, _ := redisClient.Get(context.TODO(), id).Result()
 
-		// omsg := OriginMessage(string(msg), utils.GetUsername(session))
-		// controller := controllers.NewMessageContoller(mongoTool)
-		// controller.InsertMessage(omsg)
+		msgJ := NewMessageJ(string(msg), GetUsername(session))
+		msgController.InsertMessage(msgJ)
 
-		msg = NewMessage(string(msg), utils.GetUsername(session))
+		msg = NewMessage(string(msg), GetUsername(session))
 		//socket chat filtered with sessionID and only allow 1 on 1 talk
 		melodyNew.BroadcastFilter(msg, func(session *melody.Session) bool {
-			compareID, _ := session.Get(KEY)
+			compareID, _ := session.Get(chatKey)
 			return compareID == chatTo || compareID == id
 		})
 	})
 }
 
 //when user connect the chat
-func HandleConnect(socketTool *mdDB.RedisTool) {
+func (chatController ChatController) HandleConnect(socketTool *mdDB.RedisTool) {
 	melodyNew := socketTool.Melody
 	redisClient := socketTool.RedisClient
 
 	melodyNew.HandleConnect(func(session *melody.Session) {
-		id := InitSession(session)
+		id := initSession(session)
 		//check if 2 people are waiting to chat
-		if key, err := GetWaitFirstKey(redisClient); err == nil && key != "" {
+		if key, err := getWaitFirstKey(redisClient); err == nil && key != "" {
 			//create 1 on 1 chat
-			CreateChat(id, key, redisClient)
+			createChat(id, key, redisClient)
 			msg := NewMessage("Match success", "Server")
 			melodyNew.BroadcastFilter(msg, func(session *melody.Session) bool {
-				compareID, _ := session.Get(KEY)
+				compareID, _ := session.Get(chatKey)
 				return compareID == id || compareID == key
 			})
 		} else {
 			// if not then add to the queue and wait
-			AddToWaitList(id, redisClient)
+			addToWaitList(id, redisClient)
 			msg := NewMessage("Wait for matching...", "Server")
 			melodyNew.BroadcastFilter(msg, func(session *melody.Session) bool {
-				compareID, _ := session.Get(KEY)
+				compareID, _ := session.Get(chatKey)
 				return compareID == id
 			})
 		}
@@ -119,17 +126,17 @@ func HandleConnect(socketTool *mdDB.RedisTool) {
 }
 
 //when user disconnect
-func HandleClose(socketTool *mdDB.RedisTool) {
+func (chatController ChatController) HandleClose(socketTool *mdDB.RedisTool) {
 	melodyNew := socketTool.Melody
 	redisClient := socketTool.RedisClient
 
 	melodyNew.HandleClose(func(session *melody.Session, i int, s string) error {
-		id := GetSessionID(session)
+		id := getSessionID(session)
 		chatTo, _ := redisClient.Get(context.TODO(), id).Result()
-		msg := NewMessage(utils.GetUsername(session)+" left the room", "Server")
-		RemoveChat(id, chatTo, redisClient)
+		msg := NewMessage(GetUsername(session)+" left the room", "Server")
+		removeChat(id, chatTo, redisClient)
 		return melodyNew.BroadcastFilter(msg, func(session *melody.Session) bool {
-			compareID, _ := session.Get(KEY)
+			compareID, _ := session.Get(chatKey)
 			return compareID == chatTo
 		})
 	})
