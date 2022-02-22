@@ -3,8 +3,9 @@ package controllers
 import (
 	mdDB "backend-web_chat/model/database"
 	mdMsg "backend-web_chat/model/message"
-	"encoding/json"
 	"fmt"
+	"log"
+	"time"
 
 	"context"
 
@@ -24,13 +25,13 @@ func NewMessageContoller(mongoTool *mdDB.MongoTool) *MessageController {
 func SetMongoClient() *mongo.Client {
 	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI("mongodb://localhost:27017"))
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	// Ping the primary
 	if err := client.Ping(context.TODO(), readpref.Primary()); err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
-	fmt.Println("Mongo successfully connected and pinged.")
+	fmt.Println("MongoDB successfully connected and pinged.")
 
 	return client
 }
@@ -39,22 +40,16 @@ func (msgController MessageController) InsertMessage(message *mdMsg.Message) {
 	msgController.mongoTool.CollName.InsertOne(context.Background(), message)
 }
 
-func NewMessage(body string, sender string) []byte {
-	result, _ := json.Marshal(
-		&mdMsg.Message{
-			IP:     GetUserIP(),
-			ID:     GetMsgID(),
-			Body:   body,
-			Sender: sender,
-		})
-	return result
-}
+func (msgController MessageController) NewMessage(body string, sender string) (msg *mdMsg.Message) {
 
-func NewMessageJ(body string, sender string) *mdMsg.Message {
-	return (&mdMsg.Message{
+	//ISODate
+	localTime, _ := time.LoadLocation("Local")
+	msg = &mdMsg.Message{
 		IP:     GetUserIP(),
 		ID:     GetMsgID(),
 		Body:   body,
 		Sender: sender,
-	})
+		Time:   time.Now().In(localTime),
+	}
+	return msg
 }

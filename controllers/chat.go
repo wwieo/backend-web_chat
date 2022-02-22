@@ -2,6 +2,8 @@ package controllers
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"log"
 
 	"github.com/gin-gonic/gin"
@@ -35,6 +37,7 @@ func SetRedisClient() *redis.Client {
 	if err != nil {
 		log.Fatal("Redis error:", err)
 	}
+	fmt.Println("Redis successfully connected and pinged.")
 	return redisClient
 }
 
@@ -85,10 +88,11 @@ func (chatController ChatController) HandleMessage(socketTool *mdDB.RedisTool, m
 		id := getSessionID(session)
 		chatTo, _ := redisClient.Get(context.TODO(), id).Result()
 
-		msgJ := NewMessageJ(string(msg), GetUsername(session))
-		msgController.InsertMessage(msgJ)
+		newMsg := msgController.NewMessage(string(msg), GetUsername(session))
 
-		msg = NewMessage(string(msg), GetUsername(session))
+		msgController.InsertMessage(newMsg)
+		msg, _ = json.Marshal(newMsg)
+
 		//socket chat filtered with sessionID and only allow 1 on 1 talk
 		melodyNew.BroadcastFilter(msg, func(session *melody.Session) bool {
 			compareID, _ := session.Get(chatKey)
@@ -98,9 +102,10 @@ func (chatController ChatController) HandleMessage(socketTool *mdDB.RedisTool, m
 }
 
 //when user connect the chat
-func (chatController ChatController) HandleConnect(socketTool *mdDB.RedisTool) {
+func (chatController ChatController) HandleConnect(socketTool *mdDB.RedisTool, mongoTool *mdDB.MongoTool) {
 	melodyNew := socketTool.Melody
 	redisClient := socketTool.RedisClient
+	msgController := NewMessageContoller(mongoTool)
 
 	melodyNew.HandleConnect(func(session *melody.Session) {
 		id := initSession(session)
@@ -108,7 +113,11 @@ func (chatController ChatController) HandleConnect(socketTool *mdDB.RedisTool) {
 		if key, err := getWaitFirstKey(redisClient); err == nil && key != "" {
 			//create 1 on 1 chat
 			createChat(id, key, redisClient)
-			msg := NewMessage("Match success", "Server")
+
+			newMsg := msgController.NewMessage("Match success", "Server")
+			msgController.InsertMessage(newMsg)
+			msg, _ := json.Marshal(newMsg)
+
 			melodyNew.BroadcastFilter(msg, func(session *melody.Session) bool {
 				compareID, _ := session.Get(chatKey)
 				return compareID == id || compareID == key
@@ -116,7 +125,8 @@ func (chatController ChatController) HandleConnect(socketTool *mdDB.RedisTool) {
 		} else {
 			// if not then add to the queue and wait
 			addToWaitList(id, redisClient)
-			msg := NewMessage("Wait for matching...", "Server")
+			msg, _ := json.Marshal(msgController.NewMessage("Wait for matching...", "Server"))
+
 			melodyNew.BroadcastFilter(msg, func(session *melody.Session) bool {
 				compareID, _ := session.Get(chatKey)
 				return compareID == id
@@ -126,14 +136,19 @@ func (chatController ChatController) HandleConnect(socketTool *mdDB.RedisTool) {
 }
 
 //when user disconnect
-func (chatController ChatController) HandleClose(socketTool *mdDB.RedisTool) {
+func (chatController ChatController) HandleClose(socketTool *mdDB.RedisTool, mongoTool *mdDB.MongoTool) {
 	melodyNew := socketTool.Melody
 	redisClient := socketTool.RedisClient
+	msgController := NewMessageContoller(mongoTool)
 
 	melodyNew.HandleClose(func(session *melody.Session, i int, s string) error {
 		id := getSessionID(session)
 		chatTo, _ := redisClient.Get(context.TODO(), id).Result()
-		msg := NewMessage(GetUsername(session)+" left the room", "Server")
+
+		newMsg := msgController.NewMessage(GetUsername(session)+" left the room", "Server")
+		msgController.InsertMessage(newMsg)
+		msg, _ := json.Marshal(newMsg)
+
 		removeChat(id, chatTo, redisClient)
 		return melodyNew.BroadcastFilter(msg, func(session *melody.Session) bool {
 			compareID, _ := session.Get(chatKey)

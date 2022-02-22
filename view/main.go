@@ -31,8 +31,8 @@ func Start(port string) {
 	ginDefault.GET("/chat", controllers.HandleRequest(&socketTool))
 
 	chatController.HandleMessage(&socketTool, &mongoTool)
-	chatController.HandleConnect(&socketTool)
-	chatController.HandleClose(&socketTool)
+	chatController.HandleConnect(&socketTool, &mongoTool)
+	chatController.HandleClose(&socketTool, &mongoTool)
 
 	ginDefault.Run(port)
 }
