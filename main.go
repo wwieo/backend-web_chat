@@ -1,7 +1,7 @@
 package main
 
 import (
-	chat "backend-web_chat/chat"
+	view "backend-web_chat/view"
 	"flag"
 )
 
@@ -14,7 +14,7 @@ func init() {
 }
 
 func main() {
-	chat.Start(*port)
+	view.Start(*port)
 }
 
 //let ws = new WebSocket("ws://localhost:8080/chat")
