@@ -41,12 +41,14 @@ func SetRedisClient() *redis.Client {
 	return redisClient
 }
 
+//create a new session id for chatting
 func initSession(session *melody.Session) string {
 	id := uuid.New().String()
 	session.Set(chatKey, id)
 	return id
 }
 
+//when user connect the server, then return a session id
 func getSessionID(session *melody.Session) string {
 	if id, isExist := session.Get(chatKey); isExist {
 		return id.(string)
@@ -54,19 +56,23 @@ func getSessionID(session *melody.Session) string {
 	return initSession(session)
 }
 
+//add people with id to wait list
 func addToWaitList(id string, redisClient *redis.Client) error {
 	return redisClient.LPush(context.Background(), chatWait, id).Err()
 }
 
+//pop a wating people's id
 func getWaitFirstKey(redisClient *redis.Client) (string, error) {
 	return redisClient.LPop(context.Background(), chatWait).Result()
 }
 
+//when 2 people pair successully, create a one-to-one chat
 func createChat(id1, id2 string, redisClient *redis.Client) {
 	redisClient.Set(context.Background(), id1, id2, 0)
 	redisClient.Set(context.Background(), id2, id1, 0)
 }
 
+//chat ended
 func removeChat(id1, id2 string, redisClient *redis.Client) {
 	redisClient.Del(context.Background(), id1, id2)
 }
@@ -93,7 +99,7 @@ func (chatController ChatController) HandleMessage(socketTool *mdDB.RedisTool, m
 		msgController.InsertMessage(newMsg)
 		msg, _ = json.Marshal(newMsg)
 
-		//socket chat filtered with sessionID and only allow 1 on 1 talk
+		//socket chat filtered by sessionID and only allow one-to-one talk
 		melodyNew.BroadcastFilter(msg, func(session *melody.Session) bool {
 			compareID, _ := session.Get(chatKey)
 			return compareID == chatTo || compareID == id
@@ -109,21 +115,21 @@ func (chatController ChatController) HandleConnect(socketTool *mdDB.RedisTool, m
 
 	melodyNew.HandleConnect(func(session *melody.Session) {
 		id := initSession(session)
-		//check if 2 people are waiting to chat
+		//get people in waitlist
 		if key, err := getWaitFirstKey(redisClient); err == nil && key != "" {
-			//create 1 on 1 chat
 			createChat(id, key, redisClient)
 
 			newMsg := msgController.NewMessage("Match success", "Server")
 			msgController.InsertMessage(newMsg)
 			msg, _ := json.Marshal(newMsg)
+			fmt.Println(newMsg.Time)
 
 			melodyNew.BroadcastFilter(msg, func(session *melody.Session) bool {
 				compareID, _ := session.Get(chatKey)
 				return compareID == id || compareID == key
 			})
 		} else {
-			// if not then add to the queue and wait
+			//if not then add to the queue and wait
 			addToWaitList(id, redisClient)
 			msg, _ := json.Marshal(msgController.NewMessage("Wait for matching...", "Server"))
 

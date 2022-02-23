@@ -41,15 +41,12 @@ func (msgController MessageController) InsertMessage(message *mdMsg.Message) {
 }
 
 func (msgController MessageController) NewMessage(body string, sender string) (msg *mdMsg.Message) {
-
-	//ISODate
-	localTime, _ := time.LoadLocation("Local")
 	msg = &mdMsg.Message{
 		IP:     GetUserIP(),
 		ID:     GetMsgID(),
 		Body:   body,
 		Sender: sender,
-		Time:   time.Now().In(localTime),
+		Time:   time.Now(),
 	}
 	return msg
 }
