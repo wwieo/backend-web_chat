@@ -3,12 +3,15 @@ package view
 import (
 	controllers "backend-web_chat/controllers"
 	mdDB "backend-web_chat/model/database"
+	"fmt"
 
 	"github.com/gin-gonic/gin"
 	"gopkg.in/olahol/melody.v1"
 )
 
-func Start(port string) {
+func Start() {
+	utilsController := controllers.NewUtilsController()
+	config := utilsController.GetConfig()
 
 	ginDefault := gin.Default()
 	ginDefault.GET("/", func(c *gin.Context) {
@@ -19,13 +22,15 @@ func Start(port string) {
 		Melody:      melody.New(),
 		RedisClient: controllers.SetRedisClient(),
 	}
-	chatController := controllers.NewChatContoller(&socketTool)
+	chatController := controllers.NewChatController(&socketTool)
 
 	mongoClient := controllers.SetMongoClient()
+	mongoDB := config.GetString("mongo.database")
+	mongoDBCol := config.GetString("mongo.collection")
 	mongoTool := mdDB.MongoTool{
 		MongoClient: mongoClient,
-		Database:    mongoClient.Database("ChatSystem"),
-		CollName:    mongoClient.Database("ChatSystem").Collection("Messages"),
+		Database:    mongoClient.Database(mongoDB),
+		CollName:    mongoClient.Database(mongoDB).Collection(mongoDBCol),
 	}
 
 	ginDefault.GET("/chat", controllers.HandleRequest(&socketTool))
@@ -34,5 +39,5 @@ func Start(port string) {
 	chatController.HandleConnect(&socketTool, &mongoTool)
 	chatController.HandleClose(&socketTool, &mongoTool)
 
-	ginDefault.Run(port)
+	ginDefault.Run(fmt.Sprintf(":%d", config.GetInt("application.port")))
 }

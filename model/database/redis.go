@@ -9,3 +9,10 @@ type RedisTool struct {
 	Melody      *melody.Melody
 	RedisClient *redis.Client
 }
+
+type RedisConfig struct {
+	Url      string
+	Password string
+	Port     int
+	DB       int
+}

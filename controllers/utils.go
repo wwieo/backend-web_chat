@@ -4,18 +4,26 @@ import (
 	"net"
 
 	"github.com/google/uuid"
+	"github.com/spf13/viper"
 	"gopkg.in/olahol/melody.v1"
 )
 
-func GetMsgID() string {
+type UtilsController struct {
+}
+
+func NewUtilsController() *UtilsController {
+	return &UtilsController{}
+}
+
+func (utilsController *UtilsController) GetMsgID() string {
 	return uuid.New().String()
 }
 
-func GetUsername(session *melody.Session) string {
+func (utilsController *UtilsController) GetUsername(session *melody.Session) string {
 	return session.Request.URL.Query().Get("username")
 }
 
-func GetUserIP() string {
+func (utilsController *UtilsController) GetUserIP() string {
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {
 		return ""
@@ -29,4 +37,17 @@ func GetUserIP() string {
 		}
 	}
 	return ""
+}
+
+func (utilsController *UtilsController) GetConfig() (config *viper.Viper) {
+
+	config = viper.New()
+	config.AddConfigPath("./config")
+	config.SetConfigName("config")
+	config.SetConfigType("yaml")
+
+	if err := config.ReadInConfig(); err != nil {
+		panic("config err: " + err.Error())
+	}
+	return config
 }

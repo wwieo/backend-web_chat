@@ -14,16 +14,33 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
+var (
+	utilsController = NewUtilsController()
+	mongoConfig     = *new(mdDB.MongoConfig)
+)
+
+func init() {
+	config := utilsController.GetConfig()
+	mongoConfig = mdDB.MongoConfig{
+		Url:        config.GetString("mongo.url"),
+		Password:   config.GetString("mongo.password"),
+		Database:   config.GetString("mongo.database"),
+		Collection: config.GetString("mongo.collection"),
+		Port:       config.GetInt("mongo.port"),
+	}
+}
+
 type MessageController struct {
 	mongoTool *mdDB.MongoTool
 }
 
-func NewMessageContoller(mongoTool *mdDB.MongoTool) *MessageController {
+func NewMessageController(mongoTool *mdDB.MongoTool) *MessageController {
 	return &MessageController{mongoTool}
 }
 
 func SetMongoClient() *mongo.Client {
-	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI("mongodb://localhost:27017"))
+	URI := fmt.Sprintf("%s:%d", mongoConfig.Url, mongoConfig.Port)
+	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(URI))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -42,8 +59,8 @@ func (msgController MessageController) InsertMessage(message *mdMsg.Message) {
 
 func (msgController MessageController) NewMessage(body string, sender string) (msg *mdMsg.Message) {
 	msg = &mdMsg.Message{
-		IP:     GetUserIP(),
-		ID:     GetMsgID(),
+		IP:     utilsController.GetUserIP(),
+		ID:     utilsController.GetMsgID(),
 		Body:   body,
 		Sender: sender,
 		Time:   time.Now(),

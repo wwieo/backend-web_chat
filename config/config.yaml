@@ -1,0 +1,16 @@
+application:
+  port: 8080
+  chat:
+    chatKey: "chat_id"
+    chatWait: "wait"
+redis:
+  url: "localhost"
+  port: 6379
+  password: ""
+  db: 0
+mongo:
+  url: "mongodb://localhost"
+  port: 27017
+  password : ""
+  database: "ChatSystem"
+  collection : "Messages"
